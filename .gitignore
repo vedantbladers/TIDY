@@ -1,0 +1,19 @@
+# Internal notes & documentation
+TO-DO
+FEATURES & USPS
+guide.md
+implementation.md
+
+# Binaries
+tidy
+*.exe
+*.test
+
+# Local SQLite databases & journals
+*.db
+*.db-journal
+*.tmp
+
+# OS metadata
+.DS_Store
+Thumbs.db
