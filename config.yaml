@@ -1,0 +1,47 @@
+# tidy default configuration
+# Default location: ~/.config/tidy/config.yaml
+
+# Directories to scan and organize (Top-level only, never recursive)
+watch_dirs:
+  - ~/Downloads
+
+# Optional content-sniffing fallback using magic bytes (true/false)
+sniff_content: false
+
+# Patterns to ignore during scans and active debounce windows
+ignore:
+  - "*.crdownload"
+
+  - "*.part"
+
+  - "*.tmp"
+
+  - ".DS_Store"
+
+  - "desktop.ini"
+
+  - "*.download"
+
+# Ordered rule definitions (First matching rule wins!)
+rules:
+  - name: Documents
+    extensions: [".pdf", ".doc", ".docx", ".txt", ".md", ".csv"]
+    dest: ~/Downloads/Documents
+
+  - name: Screenshots
+    pattern: "Screenshot*"
+    dest: ~/Downloads/Images/Screenshots
+
+  - name: Images
+    extensions: [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"]
+    dest: ~/Downloads/Images
+
+  - name: Archives
+    extensions: [".zip", ".rar", ".7z", ".tar", ".tar.gz", ".tgz"]
+    dest: ~/Downloads/Compressed
+
+  - name: Torrents
+    extensions: [".torrent"]
+    dest: ~/Downloads/Torrents
+
+  
