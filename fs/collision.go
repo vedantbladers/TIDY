@@ -19,6 +19,11 @@ const (
 // SplitNameAndExt splits a filename into its base name and extension.
 // It recognizes compound extensions like ".tar.gz", ".tar.bz2", and ".tar.xz".
 func SplitNameAndExt(filename string) (string, string) {
+	// Dotfiles like ".gitignore" or ".hiddenfile" have NO extension
+	if strings.HasPrefix(filename, ".") && strings.Count(filename, ".") == 1 {
+		return filename, ""
+	}
+
 	lower := strings.ToLower(filename)
 	compoundExts := []string{".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst"}
 
