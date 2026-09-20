@@ -125,6 +125,9 @@ func (l *Ledger) GetOperationsForRun(runID string) ([]Operation, error) {
 		}
 		ops = append(ops, op)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error for run %s: %w", runID, err)
+	}
 
 	return ops, nil
 }
@@ -186,6 +189,9 @@ func (l *Ledger) VerifyLedgerIntegrity() (bool, error) {
 
 		// Move to next link in the chain
 		expectedPrev = recHash
+	}
+	if err := rows.Err(); err != nil {
+		return false, fmt.Errorf("row iteration error during audit: %w", err)
 	}
 
 	return true, nil
