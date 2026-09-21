@@ -102,6 +102,17 @@ func (l *Ledger) RecordMove(runID, source, dest string, fileSize int64) (*Operat
 	}, nil
 }
 
+// GetLatestActiveRun returns the run_id of the most recent active run.
+func (l *Ledger) GetLatestActiveRun() (string, error) {
+	var runID string
+	query := `SELECT run_id FROM runs WHERE status = 'active' ORDER BY timestamp DESC LIMIT 1`
+	err := l.db.QueryRow(query).Scan(&runID)
+	if err != nil {
+		return "", err
+	}
+	return runID, nil
+}
+
 // GetOperationsForRun retrieves all active (not undone) operations for a given run in reverse order.
 func (l *Ledger) GetOperationsForRun(runID string) ([]Operation, error) {
 	query := `
