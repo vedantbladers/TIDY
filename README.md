@@ -14,6 +14,28 @@ Unlike bloated GUI apps or fragile Python scripts, `tidy` is built as **resilien
 
 ---
 
+## 🌟 Unique Selling Points (USPs)
+
+| Feature | `tidy` | Hazel / organize (Python) / Shell Scripts |
+| :--- | :--- | :--- |
+| **Runtime Dependencies** | **Zero** — Single static Go binary (CGO-free via `modernc.org/sqlite`) | Heavy (requires Python interpreter, Node.js, external packages) |
+| **Undo System** | **First-class & selective** — Undo by ID, session run, or LIFO rollback | None / Destructive manual recovery |
+| **Audit Log Integrity** | **Cryptographic SHA-256 Hash Chain** (tamper-evident) | Unstructured plain text logs or none |
+| **Folder Scoping** | **Top-level only guarantee** — Subfolders are never scanned | Accidental recursive loops into already-sorted directories |
+| **Rule Debugger** | Built-in `tidy explain <file>` step-by-step trace | Guesswork and trial-and-error |
+| **Shadowing Detection**| `tidy validate` warns on unreachable/starved rules | Silent rule overriding |
+| **Execution Model** | Headless CLI + native **systemd user service** companion | Heavy background GUI / tray process |
+
+### 🧰 Major Tech Stack & Tools
+
+* **[Go](https://go.dev/) (1.22+)**: Fast, compiled language producing a single standalone static binary.
+* **[Cobra](https://github.com/spf13/cobra)**: Robust CLI command architecture (used by Kubernetes `kubectl`, GitHub CLI `gh`, Docker).
+* **[modernc.org/sqlite](https://gitlab.com/cznic/sqlite)**: 100% pure-Go embedded SQLite engine enabling CGO-free compilation with zero external C dependencies.
+* **[fsnotify](https://github.com/fsnotify/fsnotify)**: Low-overhead kernel filesystem event listener (`inotify`) with per-file settling debouncing.
+* **[systemd](https://systemd.io/)**: Native Linux user service supervisor for autonomous background execution.
+
+---
+
 ## 🏗️ Architecture & Decision Pipeline
 
 ```mermaid
@@ -46,28 +68,6 @@ flowchart TD
 
     N -. "Reversible Anytime" .-> O["tidy undo (--id / --session / LIFO)"]
 ```
-
----
-
-## 🌟 Unique Selling Points (USPs)
-
-| Feature | `tidy` | Hazel / organize (Python) / Shell Scripts |
-| :--- | :--- | :--- |
-| **Runtime Dependencies** | **Zero** — Single static Go binary (CGO-free via `modernc.org/sqlite`) | Heavy (requires Python interpreter, Node.js, external packages) |
-| **Undo System** | **First-class & selective** — Undo by ID, session run, or LIFO rollback | None / Destructive manual recovery |
-| **Audit Log Integrity** | **Cryptographic SHA-256 Hash Chain** (tamper-evident) | Unstructured plain text logs or none |
-| **Folder Scoping** | **Top-level only guarantee** — Subfolders are never scanned | Accidental recursive loops into already-sorted directories |
-| **Rule Debugger** | Built-in `tidy explain <file>` step-by-step trace | Guesswork and trial-and-error |
-| **Shadowing Detection**| `tidy validate` warns on unreachable/starved rules | Silent rule overriding |
-| **Execution Model** | Headless CLI + native **systemd user service** companion | Heavy background GUI / tray process |
-
-### 🧰 Major Tech Stack & Tools
-
-* **[Go](https://go.dev/) (1.22+)**: Fast, compiled language producing a single standalone static binary.
-* **[Cobra](https://github.com/spf13/cobra)**: Robust CLI command architecture (used by Kubernetes `kubectl`, GitHub CLI `gh`, Docker).
-* **[modernc.org/sqlite](https://gitlab.com/cznic/sqlite)**: 100% pure-Go embedded SQLite engine enabling CGO-free compilation with zero external C dependencies.
-* **[fsnotify](https://github.com/fsnotify/fsnotify)**: Low-overhead kernel filesystem event listener (`inotify`) with per-file settling debouncing.
-* **[systemd](https://systemd.io/)**: Native Linux user service supervisor for autonomous background execution.
 
 ---
 
