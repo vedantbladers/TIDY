@@ -7,14 +7,13 @@
 [![systemd](https://img.shields.io/badge/Daemon-systemd-CC2200?style=flat)](https://systemd.io/)
 [![Zero Dependencies](https://img.shields.io/badge/Runtime%20Deps-Zero%20(CGO--free)-success?style=flat)]()
 
-`tidy` is a fast, robust, and auditable command-line folder organizer written in Go. It keeps designated directories cleanly organized using simple, declarative YAML rules.
+`tidy` is a fast, deterministic, and auditable command-line folder organizer engineered in Go. It continuously monitors and organizes designated directories (such as `~/Downloads`) using simple, declarative YAML rules. Designed to operate silently in the background without manual intervention, `tidy` intelligently handles in-progress downloads with quiet-period debouncing and routes files to their target destinations with sub-millisecond execution.
 
-
-Unlike bloated GUI apps or fragile Python scripts, `tidy` is built as **resilient Linux infrastructure** — operating with zero external runtime dependencies, a pure-Go embedded SQLite ledger, tamper-evident SHA-256 hash chaining, and first-class reversible operations.
+Unlike bloated desktop GUI applications or fragile Python automation scripts that require complex runtimes, `tidy` is built as **resilient, headless Linux infrastructure**. It ships as a single static binary with zero runtime dependencies, strictly guarantees top-level folder safety so already-organized subdirectories are never recursively mutated, and records every file movement into a pure-Go embedded SQLite ledger protected by a cryptographic SHA-256 hash chain with first-class undo capabilities.
 
 ---
 
-## 🌟 Unique Selling Points (USPs)
+## 💎 Core Capabilities & Architectural Comparison
 
 | Feature | `tidy` | Hazel / organize (Python) / Shell Scripts |
 | :--- | :--- | :--- |
