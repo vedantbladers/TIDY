@@ -20,6 +20,14 @@ type Operation struct {
 	IsUndone       bool
 }
 
+// Run represents an organizing execution session.
+type Run struct {
+	RunID       string
+	Timestamp   string
+	TriggerType string
+	Status      string
+}
+
 // Ledger provides high-level methods for recording and auditing file movements.
 type Ledger struct {
 	db *sql.DB
@@ -206,4 +214,59 @@ func (l *Ledger) VerifyLedgerIntegrity() (bool, error) {
 	}
 
 	return true, nil
+}
+
+// GetRecentRuns returns the most recent organizing runs up to limit.
+func (l *Ledger) GetRecentRuns(limit int) ([]Run, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	query := `SELECT run_id, timestamp, trigger_type, status FROM runs ORDER BY timestamp DESC LIMIT ?`
+	rows, err := l.db.Query(query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query recent runs: %w", err)
+	}
+	defer rows.Close()
+
+	var runs []Run
+	for rows.Next() {
+		var r Run
+		if err := rows.Scan(&r.RunID, &r.Timestamp, &r.TriggerType, &r.Status); err != nil {
+			return nil, fmt.Errorf("failed to scan run row: %w", err)
+		}
+		runs = append(runs, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error for recent runs: %w", err)
+	}
+	return runs, nil
+}
+
+// GetAllOperationsForRun returns all operations for a given run (including undone ones).
+func (l *Ledger) GetAllOperationsForRun(runID string) ([]Operation, error) {
+	query := `
+	SELECT id, run_id, timestamp, source_path, dest_path, file_size, prev_record_hash, record_hash, is_undone
+	FROM operations
+	WHERE run_id = ?
+	ORDER BY id ASC
+	`
+	rows, err := l.db.Query(query, runID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query operations: %w", err)
+	}
+	defer rows.Close()
+
+	var ops []Operation
+	for rows.Next() {
+		var op Operation
+		if err := rows.Scan(&op.ID, &op.RunID, &op.Timestamp, &op.SourcePath, &op.DestPath,
+			&op.FileSize, &op.PrevRecordHash, &op.RecordHash, &op.IsUndone); err != nil {
+			return nil, fmt.Errorf("failed to scan operation row: %w", err)
+		}
+		ops = append(ops, op)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error for operations: %w", err)
+	}
+	return ops, nil
 }
