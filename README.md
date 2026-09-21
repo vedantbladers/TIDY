@@ -1,99 +1,216 @@
-# tidy — Deterministic Go CLI Folder Organizer
+# 🧹 tidy — Deterministic Go CLI Folder Organizer
 
-`tidy` is a fast, robust, and auditable command-line tool written in Go that automatically organizes files in designated directories using simple, declarative YAML rules.
+[![Go Version](https://img.shields.io/badge/go-1.22+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Zero Dependencies](https://img.shields.io/badge/runtime%20deps-zero-success.svg)]()
+[![Platform](https://img.shields.io/badge/platform-linux-lightgrey.svg)]()
 
-Unlike traditional folder organization scripts or bloated GUI automation utilities, `tidy` is engineered as **resilient infrastructure** — operating with zero runtime dependencies, a tamper-evident audit log, and first-class reversible operations.
+`tidy` is a fast, robust, and auditable command-line folder organizer written in Go. It keeps designated directories cleanly organized using simple, declarative YAML rules.
+
+Unlike bloated GUI apps or fragile Python scripts, `tidy` is built as **resilient Linux infrastructure** — operating with zero external runtime dependencies, a pure-Go embedded SQLite ledger, tamper-evident SHA-256 hash chaining, and first-class reversible operations.
 
 ---
 
-## 🌟 Core Identity & Unique Selling Points (USPs)
+## 🏗️ Architecture & Decision Pipeline
 
-| Feature | `tidy` | Traditional Tools (Hazel, organize) |
+```mermaid
+flowchart TD
+    A["File Arrives in Watch Dir (e.g. ~/Downloads/file.pdf)"] --> B{"Ignore Filter Match?<br/>(*.crdownload, .part, .tmp)"}
+    B -- Yes --> C["Skip & Halt (Ignored)"]
+    B -- No --> D["Rule Chain Matcher (First Match Wins)"]
+
+    D --> D1{"Rule 1: Pattern Glob?<br/>(e.g. 'Screenshot*')"}
+    D1 -- Match --> F["Resolve Destination Directory"]
+    D1 -- No Match --> D2{"Rule 2: Multi-part Extension?<br/>(e.g. '.tar.gz')"}
+    D2 -- Match --> F
+    D2 -- No Match --> D3{"Rule 3: Extension Match?<br/>(e.g. '.pdf', '.png')"}
+    D3 -- Match --> F
+    D3 -- No Match --> D4{"Content-Sniffing (Magic Bytes)?<br/>(if sniff_content: true)"}
+    D4 -- Match --> F
+    D4 -- No Match --> E["No Rules Matched (File stays untouched)"]
+
+    F --> G{"Collision Check at Destination?"}
+    G -- "Same File (SHA-256 Match)" --> H["Skip Duplicate"]
+    G -- "Different Content" --> I["Increment Suffix: file (1).pdf"]
+    G -- "No Collision" --> J["Target: file.pdf"]
+
+    I --> K["Atomic File Mover (os.Rename with EXDEV Fallback)"]
+    J --> K
+
+    K --> L["SQLite History Ledger (modernc.org/sqlite)"]
+    L --> M["Compute SHA-256 Hash Chained to prev_hash"]
+    M --> N["Record Committed & Verified ✓"]
+
+    N -. "Reversible Anytime" .-> O["tidy undo (--id / --session / LIFO)"]
+```
+
+---
+
+## 🌟 Unique Selling Points (USPs)
+
+| Feature | `tidy` | Hazel / organize (Python) / Shell Scripts |
 | :--- | :--- | :--- |
-| **Runtime Dependencies** | **Zero** — Single static binary (pure Go, CGO-free via `modernc.org/sqlite`) | Heavy (requires Python/Node interpreters, libraries) |
-| **Undo System** | **First-class & selective** — Undo last move, by ID, by session, or by time | Minimal / Non-existent / Destructive |
-| **Audit Log Integrity** | **Tamper-evident** — SHA-256 hash-chained history | Plain text logs or none |
-| **Security & Safety** | **No code execution** — Strict match-and-move only | Can execute arbitrary shell/scripts/regex |
-| **Folder Scoping** | **Top-level only guarantee** — Subdirectories are never scanned or mutated | Can inadvertently recurse into organized subtrees |
-| **Rule Debugger** | Built-in `tidy explain <file>` trace tool | Guess-and-check or complex log parsing |
-| **Shadowing Detection**| `tidy validate` warns on unreachable/overlapping rules | Silent rule overriding |
-| **Daemon Philosophy**  | Headless CLI, native **systemd/cron** companion | Heavy background GUI / tray process |
+| **Runtime Dependencies** | **Zero** — Single static Go binary (CGO-free via `modernc.org/sqlite`) | Heavy (requires Python interpreter, Node.js, external packages) |
+| **Undo System** | **First-class & selective** — Undo by ID, session run, or LIFO rollback | None / Destructive manual recovery |
+| **Audit Log Integrity** | **Cryptographic SHA-256 Hash Chain** (tamper-evident) | Unstructured plain text logs or none |
+| **Folder Scoping** | **Top-level only guarantee** — Subfolders are never scanned | Accidental recursive loops into already-sorted directories |
+| **Rule Debugger** | Built-in `tidy explain <file>` step-by-step trace | Guesswork and trial-and-error |
+| **Shadowing Detection**| `tidy validate` warns on unreachable/starved rules | Silent rule overriding |
+| **Execution Model** | Headless CLI + native **systemd user service** companion | Heavy background GUI / tray process |
 
 ---
 
-## 🚀 Key Capabilities
+## 🚀 Quick Start & Installation Guide
 
-### 1. Reversible History & First-Class Undo
-Every single file movement executed by `tidy` is tracked in an embedded SQLite database (`~/.local/state/tidy/history.db`).
-* `tidy undo`: Reverts the most recent move, restoring the file to its original path.
-* `tidy undo --id <ID>`: Undoes a specific operation by its history ID.
-* `tidy undo --session <run-id>`: Rollback an entire batch execution or watch session in a single transactional operation.
-* `tidy undo --since <time>`: Rollback moves performed after a specific cutoff (e.g. `2h`, `today`, `2026-01-01`).
-* **Conflict Guard**: If a new file already occupies the original source path, `tidy undo` aborts gracefully with a clear error rather than blindly overwriting data.
+Follow these steps from scratch to clone, compile, and run `tidy` on your machine:
 
-### 2. Hash-Chained Tamper-Evident History
-Each record in the history database stores:
-* Core metadata: `session_id`, `timestamp`, `source`, `dest`, `undone`.
-* `prev_hash`: SHA-256 hash of the previous record.
-* `record_hash`: SHA-256 hash calculated across the current record's fields concatenated with `prev_hash`.
-* Provides mathematical proof that the move log has not been manually altered, truncated, or falsified.
+### Step 1: Clone the Repository
+Open your terminal and clone the repository from GitHub:
+```bash
+git clone https://github.com/vedantbladers/TIDY.git
+```
 
-### 3. Strict Safety & Top-Level Invariant
-* **No Subdirectory Recursing**: `tidy` strictly considers top-level files in `watch_dirs`. If `~/Downloads/Documents` was previously populated, files inside it are never touched.
-* **Collision-Safe Renaming**: If a file with the same name exists at the destination, `tidy` checks SHA-256 content hashes (streamed safely without ballooning memory). If identical, the redundant file is skipped. If different, the destination filename is automatically suffixed (`file_1.txt`, `file_2.txt`).
-* **Atomic Destination Creation**: Missing destination directories are created on demand.
-* **Intra-Folder Movement Protection**: If a file is already in its target folder, it is skipped.
+### Step 2: Enter the Project Directory
+```bash
+cd TIDY
+```
 
-### 4. Rule Engine & Intelligence
-* **Top-to-Bottom Evaluation**: The first matching rule wins.
-* **Extension Matching**: Case-insensitive (`.PDF` == `.pdf`), with native support for multi-part extensions (e.g. `.tar.gz`, `.tgz`).
-* **Glob Pattern Matching**: Uses `filepath.Match` against base filenames (e.g. `"Screenshot*"`).
-* **Rule Shadowing Warnings**: `tidy validate` parses rules and flags when an earlier rule supersedes and starves a later rule.
-* **Rule Debugger (`tidy explain <file>`)**: Trace any hypothetical filename through the rule set to see which rule catches it and where it would be routed, with zero filesystem modifications.
-* **Content-Sniffing Fallback (Optional)**: If `sniff_content: true` is configured, files with missing or ambiguous extensions have their magic bytes (leading bytes) inspected to identify MIME type and resume rule matching safely without code execution.
+### Step 3: Install Binary & Start Background Daemon
+Run the automated installation:
+```bash
+make install
+```
 
-### 5. Live Watching with Smart Debounce
-* Uses `fsnotify` to track filesystem events in real time.
-* Debounces rapid writes (500ms–1s quiet period) to allow large downloads or file transfers to finish.
-* Recognizes rename events (e.g. `invoice.pdf.crdownload` &rarr; `invoice.pdf`) as completed downloads.
-* Filters out ephemeral or temporary files defined in `ignore` patterns.
+#### What this does automatically:
+1. Compiles a single static binary with stripped debug symbols to `~/.local/bin/tidy`.
+2. Generates a starter configuration file at `~/.config/tidy/config.yaml` (if not already present).
+3. Registers the `systemd` user service unit at `~/.config/systemd/user/tidy.service`.
+4. Enables and starts the background watcher daemon immediately.
 
 ---
 
-## 🛠️ Command Reference
-
-| Command | Description |
-| :--- | :--- |
-| `tidy init` | Writes a standard starter configuration to `~/.config/tidy/config.yaml`. |
-| `tidy validate` | Validates YAML syntax, verifies path existence, checks rule formats, and detects shadowed rules. |
-| `tidy run` | Executes a one-shot organization across top-level files in all `watch_dirs`. |
-| `tidy run --dry-run` | Previews planned moves in terminal without modifying the filesystem. |
-| `tidy watch` | Starts continuous event-driven folder monitoring with quiet-period debouncing. |
-| `tidy watch --dry-run` | Monitors filesystem events and prints intended moves without performing them. |
-| `tidy explain <filename>` | Simulates rule evaluation for a specific filename and prints match reasoning. |
-| `tidy history` | Displays a formatted table of recorded moves and their undone status. |
-| `tidy history --export <csv\|json>` | Exports the complete move history to CSV or JSON format. |
-| `tidy undo` | Reverts the most recent move operation. |
-| `tidy undo --id <ID>` | Reverts a specific historical move by ID. |
-| `tidy undo --session <session-id>` | Atomically rolls back all moves belonging to a specific session run. |
-| `tidy undo --since <timestamp>` | Rolls back all moves executed after the given time (e.g. `2h`, `today`, `2026-01-01`). |
-
-### Global Flags
-* `--config <path>`: Override the default configuration path (`~/.config/tidy/config.yaml`).
-* `--dry-run`: Enable preview mode (applicable to `run` and `watch`).
+### Step 4: Preview Your Existing Downloads (Zero-Risk Dry Run)
+Before moving any existing files, run a simulation to preview how `tidy` will sort your files:
+```bash
+tidy run --dry-run
+```
+*Outputs a color-coded preview showing every file and its planned destination without touching your disk.*
 
 ---
 
-## ⚙️ Configuration Schema (`config.yaml`)
+### Step 5: Clean Up Your Existing Downloads Backlog
+Once you are happy with the preview, organize your existing files with a single command:
+```bash
+tidy run
+```
+*Organizes all matching top-level files in milliseconds and records every operation into the SQLite history ledger.*
 
-Path: `~/.config/tidy/config.yaml` (Supports `~` expansion to home directory)
+---
+
+### Step 6: Verify the Background Service
+Check that the real-time background watcher daemon is actively running:
+```bash
+make status
+# or: systemctl --user status tidy
+```
+
+You should see:
+```text
+● tidy.service - Tidy - Deterministic CLI Folder Organizer Daemon
+     Loaded: loaded (~/.config/systemd/user/tidy.service; enabled; preset: enabled)
+     Active: active (running)
+```
+
+---
+
+### Step 7: Test Real-Time Organization
+Drop a test file into `~/Downloads`:
+```bash
+touch ~/Downloads/test_document.pdf
+```
+Wait **1 second** (for the 500ms debounce write window to settle), then check:
+```bash
+ls -l ~/Downloads/Documents/test_document.pdf
+```
+`tidy` automatically sorted it into `Documents/`!
+
+---
+
+## 🛠️ Complete CLI Command Reference
+
+`tidy` provides an intuitive, self-documenting command suite:
+
+```text
+Usage:
+  tidy [command]
+
+Available Commands:
+  init        Write a starter configuration file to ~/.config/tidy/config.yaml
+  validate    Validate configuration syntax and check for rule shadowing
+  run         Organize files in watch directories according to configured rules
+  watch       Run tidy as a background daemon watching folders in real time
+  explain     Trace rule evaluation for a specific file without moving it
+  log         Inspect organizing history and verify cryptographic ledger integrity
+  undo        Reverse the latest organizing run, a specified run ID, or a single operation
+```
+
+### Command Highlights & Examples
+
+#### 1. Trace a Rule (`tidy explain`)
+Simulate how any file or path would be handled without modifying the filesystem:
+```bash
+tidy explain "invoice_september.pdf"
+tidy explain "backup_2026.tar.gz"
+tidy explain "download.iso.crdownload"
+```
+
+#### 2. History & Audit Log (`tidy log` / `tidy history`)
+View recent organizing runs:
+```bash
+tidy log
+# or use the history alias:
+tidy history
+```
+
+Audit the cryptographic SHA-256 hash chain to verify zero database tampering:
+```bash
+tidy log --verify
+```
+
+Export move history for audits or external scripts:
+```bash
+tidy log --export csv > history.csv
+tidy log --export json > history.json
+```
+
+#### 3. First-Class Undo (`tidy undo`)
+Revert the most recent organizing run:
+```bash
+tidy undo
+```
+
+Revert a specific move operation by its record ID:
+```bash
+tidy undo --id 42
+```
+
+Revert an entire batch run by its session UUID:
+```bash
+tidy undo --session a4b0a48a-1122-3344-5566-778899aabbcc
+```
+
+---
+
+## ⚙️ Configuration Schema (`~/.config/tidy/config.yaml`)
+
+`tidy` is configured via a clean YAML file located at `~/.config/tidy/config.yaml`.
 
 ```yaml
-# Directories to scan and organize (Top-level only, never recursive)
+# Directories to scan and organize (Top-level only, never recurses into subfolders)
 watch_dirs:
   - ~/Downloads
 
-# Optional content sniffing fallback (magic-byte detection)
+# Optional content-sniffing fallback using magic bytes (true/false)
 sniff_content: false
 
 # Patterns to ignore during scans and active debounce windows
@@ -105,10 +222,10 @@ ignore:
   - "desktop.ini"
   - "*.download"
 
-# Ordered rule definitions: First match wins!
+# Ordered rule definitions: Evaluated top-to-bottom (First matching rule wins!)
 rules:
   - name: Documents
-    extensions: [".pdf", ".doc", ".docx", ".txt", ".md", ".csv"]
+    extensions: [".pdf", ".doc", ".docx", ".txt", ".md", ".csv", ".xlsx", ".xls", ".pptx", ".ppt", ".json"]
     dest: ~/Downloads/Documents
 
   - name: Screenshots
@@ -119,30 +236,68 @@ rules:
     extensions: [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"]
     dest: ~/Downloads/Images
 
+  - name: Videos
+    extensions: [".mp4", ".mkv", ".mov", ".avi", ".webm", ".flv"]
+    dest: ~/Downloads/Videos
+
   - name: Archives
     extensions: [".zip", ".rar", ".7z", ".tar", ".tar.gz", ".tgz"]
     dest: ~/Downloads/Compressed
+
+  - name: Installers
+    extensions: [".deb", ".exe", ".msi", ".AppImage"]
+    dest: ~/Downloads/Installers
 
   - name: Torrents
     extensions: [".torrent"]
     dest: ~/Downloads/Torrents
 ```
 
+### Customizing & Reloading Rules
+1. Open and edit your configuration:
+   ```bash
+   nano ~/.config/tidy/config.yaml
+   ```
+2. Validate syntax and check for rule shadowing:
+   ```bash
+   tidy validate
+   ```
+3. Restart the background service to apply changes:
+   ```bash
+   systemctl --user restart tidy
+   ```
+
 ---
 
-## 🏛️ Internal Architecture
+## 🖥️ Systemd Background Service Management
 
-```
+`tidy` runs seamlessly as a Linux user service without requiring root/sudo privileges:
+
+| Operation | Command |
+| :--- | :--- |
+| **Check service status** | `systemctl --user status tidy` *(or `make status`)* |
+| **View live streaming logs** | `journalctl --user -u tidy -f` |
+| **Restart background daemon** | `systemctl --user restart tidy` |
+| **Stop background daemon** | `systemctl --user stop tidy` |
+| **Start background daemon** | `systemctl --user start tidy` |
+| **Disable autostart on boot** | `systemctl --user disable tidy` |
+| **Uninstall service & binary** | `make uninstall` |
+
+---
+
+## 🏛️ Codebase Structure
+
+```text
 tidy/
 ├── cmd/             # Cobra CLI commands (root, init, validate, run, watch, log, undo, explain)
-├── config/          # YAML schema definitions, path expansion, validation, and rule shadowing detection
-├── daemon/          # fsnotify background watcher with per-file quiet-period debouncing and settling checks
+├── config/          # YAML schema, path expansion, validation, and rule shadowing detection
+├── daemon/          # fsnotify background watcher with quiet-period debouncing & size stability checks
 ├── db/              # Pure Go SQLite ledger (modernc.org/sqlite), schema, and SHA-256 hash chaining
 ├── engine/          # Rule matching, magic-byte sniffing, and rollback/undo execution
 ├── fs/              # Atomic moves (os.Rename), cross-device fallback (EXDEV), and collision strategies
 ├── scanner/         # Top-level directory scanner with symlink and directory recursion protection
-├── config.yaml      # Sample default starter configuration
-├── tidy.service     # Systemd user service unit for background monitoring
+├── config.yaml      # Starter configuration template
+├── tidy.service     # Systemd user service definition unit
 ├── Makefile         # Build, test, install, status, clean, and uninstall automation
 ├── go.mod           # Go module declaration
 └── main.go          # CLI entrypoint
@@ -150,35 +305,15 @@ tidy/
 
 ---
 
-## ⚡ Installation & Background Service
+## 🧪 Testing & Verification
 
-### 1. Build and Run Locally
+Run the comprehensive unit and integration test suite:
 ```bash
-# Run full test suite across all packages
 make test
-
-# Build single static binary (stripped debug symbols)
-make build
-
-# Run directly
-./bin/tidy --help
 ```
+*Runs tests across all modules covering matcher ordering, compound extensions (`.tar.gz`), case insensitivity, collision strategies, cross-device copy fallback, hash chain validation, tampering detection, and single/batch undo.*
 
-### 2. Install as a Systemd User Service
-`tidy` includes automated systemd integration for Linux users:
-```bash
-# Installs binary to ~/.local/bin/tidy, creates default config, and starts user service
-make install
+---
 
-# Check background daemon status
-make status
-# or: systemctl --user status tidy.service
-
-# Stop / start daemon
-systemctl --user stop tidy.service
-systemctl --user start tidy.service
-
-# Uninstall completely
-make uninstall
-```
-
+## 📄 License
+MIT License. Free and open source for personal and enterprise use.
