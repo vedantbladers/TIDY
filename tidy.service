@@ -1,0 +1,16 @@
+[Unit]
+Description=Tidy - Deterministic CLI Folder Organizer Daemon
+Documentation=https://github.com/vedantbladers/TIDY
+After=default.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/tidy watch
+Restart=on-failure
+RestartSec=5s
+
+# Security hardening
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
