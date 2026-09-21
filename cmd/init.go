@@ -49,6 +49,10 @@ rules:
     extensions: [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"]
     dest: ~/Downloads/Images
 
+  - name: Videos
+    extensions: [".mp4", ".mkv", ".mov", ".avi", ".webm", ".flv"]
+    dest: ~/Downloads/Videos
+
   - name: Archives
     extensions: [".zip", ".rar", ".7z", ".tar", ".tar.gz", ".tgz"]
     dest: ~/Downloads/Compressed
