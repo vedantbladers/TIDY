@@ -1,11 +1,14 @@
 # 🧹 tidy — Deterministic Go CLI Folder Organizer
 
-[![Go Version](https://img.shields.io/badge/go-1.22+-00ADD8?style=flat&logo=go)](https://go.dev/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Zero Dependencies](https://img.shields.io/badge/runtime%20deps-zero-success.svg)]()
-[![Platform](https://img.shields.io/badge/platform-linux-lightgrey.svg)]()
+[![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Cobra CLI](https://img.shields.io/badge/CLI-spf13%2Fcobra-5C6BC0?style=flat)](https://github.com/spf13/cobra)
+[![SQLite](https://img.shields.io/badge/Storage-modernc.org%2Fsqlite-003B57?style=flat&logo=sqlite)](https://gitlab.com/cznic/sqlite)
+[![fsnotify](https://img.shields.io/badge/File%20Watcher-fsnotify-EF6C00?style=flat)](https://github.com/fsnotify/fsnotify)
+[![systemd](https://img.shields.io/badge/Daemon-systemd-CC2200?style=flat)](https://systemd.io/)
+[![Zero Dependencies](https://img.shields.io/badge/Runtime%20Deps-Zero%20(CGO--free)-success?style=flat)]()
 
 `tidy` is a fast, robust, and auditable command-line folder organizer written in Go. It keeps designated directories cleanly organized using simple, declarative YAML rules.
+
 
 Unlike bloated GUI apps or fragile Python scripts, `tidy` is built as **resilient Linux infrastructure** — operating with zero external runtime dependencies, a pure-Go embedded SQLite ledger, tamper-evident SHA-256 hash chaining, and first-class reversible operations.
 
@@ -57,6 +60,14 @@ flowchart TD
 | **Rule Debugger** | Built-in `tidy explain <file>` step-by-step trace | Guesswork and trial-and-error |
 | **Shadowing Detection**| `tidy validate` warns on unreachable/starved rules | Silent rule overriding |
 | **Execution Model** | Headless CLI + native **systemd user service** companion | Heavy background GUI / tray process |
+
+### 🧰 Major Tech Stack & Tools
+
+* **[Go](https://go.dev/) (1.22+)**: Fast, compiled language producing a single standalone static binary.
+* **[Cobra](https://github.com/spf13/cobra)**: Robust CLI command architecture (used by Kubernetes `kubectl`, GitHub CLI `gh`, Docker).
+* **[modernc.org/sqlite](https://gitlab.com/cznic/sqlite)**: 100% pure-Go embedded SQLite engine enabling CGO-free compilation with zero external C dependencies.
+* **[fsnotify](https://github.com/fsnotify/fsnotify)**: Low-overhead kernel filesystem event listener (`inotify`) with per-file settling debouncing.
+* **[systemd](https://systemd.io/)**: Native Linux user service supervisor for autonomous background execution.
 
 ---
 
@@ -313,7 +324,3 @@ make test
 ```
 *Runs tests across all modules covering matcher ordering, compound extensions (`.tar.gz`), case insensitivity, collision strategies, cross-device copy fallback, hash chain validation, tampering detection, and single/batch undo.*
 
----
-
-## 📄 License
-MIT License. Free and open source for personal and enterprise use.
