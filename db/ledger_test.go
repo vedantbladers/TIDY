@@ -105,3 +105,47 @@ func TestLedger_DetectTampering(t *testing.T) {
 		t.Errorf("expected error mentioning 'tampered content', got: %v", err)
 	}
 }
+
+func TestLedger_GetOperationByIDAndAll(t *testing.T) {
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "query_test.db")
+
+	ledger, err := OpenLedger(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ledger.Close()
+
+	runID := "run-query"
+	ledger.StartRun(runID, "run")
+	op1, err := ledger.RecordMove(runID, "/a.txt", "/b.txt", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	op2, err := ledger.RecordMove(runID, "/c.txt", "/d.txt", 200)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Query by ID
+	fetched, err := ledger.GetOperationByID(op1.ID)
+	if err != nil {
+		t.Fatalf("GetOperationByID failed: %v", err)
+	}
+	if fetched.SourcePath != "/a.txt" || fetched.DestPath != "/b.txt" {
+		t.Errorf("unexpected op data: %+v", fetched)
+	}
+
+	// Query all operations
+	allOps, err := ledger.GetAllOperations(0)
+	if err != nil {
+		t.Fatalf("GetAllOperations failed: %v", err)
+	}
+	if len(allOps) != 2 {
+		t.Fatalf("expected 2 operations, got %d", len(allOps))
+	}
+	if allOps[0].ID != op1.ID || allOps[1].ID != op2.ID {
+		t.Errorf("unexpected ordering: %+v", allOps)
+	}
+}
+

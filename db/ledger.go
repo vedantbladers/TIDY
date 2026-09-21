@@ -270,3 +270,63 @@ func (l *Ledger) GetAllOperationsForRun(runID string) ([]Operation, error) {
 	}
 	return ops, nil
 }
+
+// GetOperationByID retrieves a single operation by its primary key ID.
+func (l *Ledger) GetOperationByID(id int64) (*Operation, error) {
+	query := `
+	SELECT id, run_id, timestamp, source_path, dest_path, file_size, prev_record_hash, record_hash, is_undone
+	FROM operations
+	WHERE id = ?
+	`
+	var op Operation
+	err := l.db.QueryRow(query, id).Scan(
+		&op.ID, &op.RunID, &op.Timestamp, &op.SourcePath, &op.DestPath,
+		&op.FileSize, &op.PrevRecordHash, &op.RecordHash, &op.IsUndone,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &op, nil
+}
+
+// GetAllOperations returns all recorded operations across all runs in ascending order.
+func (l *Ledger) GetAllOperations(limit int) ([]Operation, error) {
+	var query string
+	var args []any
+	if limit > 0 {
+		query = `
+		SELECT id, run_id, timestamp, source_path, dest_path, file_size, prev_record_hash, record_hash, is_undone
+		FROM operations
+		ORDER BY id ASC
+		LIMIT ?
+		`
+		args = append(args, limit)
+	} else {
+		query = `
+		SELECT id, run_id, timestamp, source_path, dest_path, file_size, prev_record_hash, record_hash, is_undone
+		FROM operations
+		ORDER BY id ASC
+		`
+	}
+
+	rows, err := l.db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query all operations: %w", err)
+	}
+	defer rows.Close()
+
+	ops := make([]Operation, 0)
+	for rows.Next() {
+		var op Operation
+		if err := rows.Scan(&op.ID, &op.RunID, &op.Timestamp, &op.SourcePath, &op.DestPath,
+			&op.FileSize, &op.PrevRecordHash, &op.RecordHash, &op.IsUndone); err != nil {
+			return nil, fmt.Errorf("failed to scan operation: %w", err)
+		}
+		ops = append(ops, op)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+	return ops, nil
+}
+

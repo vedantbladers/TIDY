@@ -134,31 +134,51 @@ rules:
 
 ```
 tidy/
-├── cmd/             # Cobra CLI command layer (init, validate, run, watch, history, undo, explain)
+├── cmd/             # Cobra CLI commands (root, init, validate, run, watch, log, undo, explain)
 ├── config/          # YAML schema definitions, path expansion, validation, and rule shadowing detection
-├── engine/          # Rule matching, magic-byte sniffing, streaming SHA-256 checks, collision resolution, and file moving
-├── history/         # SQLite repository (modernc.org/sqlite), tamper-evident hash chaining, undo transaction engine
-├── watcher/         # fsnotify wrapper with per-file quiet-period debouncing and ignore pattern filtering
+├── daemon/          # fsnotify background watcher with per-file quiet-period debouncing and settling checks
+├── db/              # Pure Go SQLite ledger (modernc.org/sqlite), schema, and SHA-256 hash chaining
+├── engine/          # Rule matching, magic-byte sniffing, and rollback/undo execution
+├── fs/              # Atomic moves (os.Rename), cross-device fallback (EXDEV), and collision strategies
+├── scanner/         # Top-level directory scanner with symlink and directory recursion protection
 ├── config.yaml      # Sample default starter configuration
+├── tidy.service     # Systemd user service unit for background monitoring
+├── Makefile         # Build, test, install, status, clean, and uninstall automation
 ├── go.mod           # Go module declaration
 └── main.go          # CLI entrypoint
 ```
 
 ---
 
-## 📦 Planned 14-Step Implementation Roadmap
+## ⚡ Installation & Background Service
 
-1. **Config Struct + YAML Loading**: Strong typing, tilde expansion, unmarshaling.
-2. **`tidy validate` + Rule Shadowing Detection**: Static analysis detecting unreachable rules.
-3. **Rule Matching Engine**: Extension normalization, multi-part handling (`.tar.gz`), glob patterns, unit tests.
-4. **Content-Sniffing Fallback**: Safe magic-byte sniffing without file execution.
-5. **`tidy run --dry-run`**: Non-destructive preview pipeline.
-6. **`tidy explain <file>`**: Rule tracer and debugging command.
-7. **Real File Mover & Conflict Engine**: Streaming SHA-256 duplicate skip, auto-suffix collision handling.
-8. **SQLite History Logging**: Base database schema and move ledger.
-9. **Hash-Chained Tamper-Evidence**: Cryptographic chaining (`prev_hash` & `record_hash`) and integrity checks.
-10. **`tidy history` + CSV/JSON Export**: Formatted table and structured audit exports.
-11. **Single Record Undo (`tidy undo`, `--id`)**: In-place reversal with destination-occupied checks.
-12. **Batch Undo (`--session`, `--since`)**: Transactional multi-file rollbacks.
-13. **`tidy watch`**: `fsnotify` event loop with per-file settling/debouncing.
-14. **`tidy watch --dry-run`**: Real-time event monitoring with dry-run logging.
+### 1. Build and Run Locally
+```bash
+# Run full test suite across all packages
+make test
+
+# Build single static binary (stripped debug symbols)
+make build
+
+# Run directly
+./bin/tidy --help
+```
+
+### 2. Install as a Systemd User Service
+`tidy` includes automated systemd integration for Linux users:
+```bash
+# Installs binary to ~/.local/bin/tidy, creates default config, and starts user service
+make install
+
+# Check background daemon status
+make status
+# or: systemctl --user status tidy.service
+
+# Stop / start daemon
+systemctl --user stop tidy.service
+systemctl --user start tidy.service
+
+# Uninstall completely
+make uninstall
+```
+

@@ -133,3 +133,53 @@ func TestUndoRun_MissingDestinationFile(t *testing.T) {
 		t.Errorf("expected 1 skipped and 0 restored, got skipped=%d, restored=%d", res.FilesSkipped, res.FilesRestored)
 	}
 }
+
+func TestUndoOperation_Success(t *testing.T) {
+	tempDir := t.TempDir()
+	sourceDir := filepath.Join(tempDir, "Downloads")
+	destDir := filepath.Join(tempDir, "Documents")
+	os.MkdirAll(sourceDir, 0755)
+	os.MkdirAll(destDir, 0755)
+
+	dbPath := filepath.Join(tempDir, "history.db")
+	ledger, err := db.OpenLedger(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ledger.Close()
+
+	sourceFile := filepath.Join(sourceDir, "single_file.pdf")
+	destFile := filepath.Join(destDir, "single_file.pdf")
+	content := []byte("hello world")
+	os.WriteFile(destFile, content, 0644)
+
+	runID := "run-single-op"
+	ledger.StartRun(runID, "run")
+	op, err := ledger.RecordMove(runID, sourceFile, destFile, int64(len(content)))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Undo single operation by ID
+	res, err := UndoOperation(ledger, op.ID)
+	if err != nil {
+		t.Fatalf("UndoOperation failed: %v", err)
+	}
+	if res.FilesRestored != 1 {
+		t.Errorf("expected 1 file restored, got %d", res.FilesRestored)
+	}
+
+	if _, err := os.Stat(sourceFile); os.IsNotExist(err) {
+		t.Errorf("expected restored file at %s", sourceFile)
+	}
+	if _, err := os.Stat(destFile); !os.IsNotExist(err) {
+		t.Errorf("expected dest file %s to be removed", destFile)
+	}
+
+	// Undoing again should return error (already undone)
+	_, err = UndoOperation(ledger, op.ID)
+	if err == nil {
+		t.Error("expected error when undoing already-undone operation, got nil")
+	}
+}
+
